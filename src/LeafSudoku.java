@@ -6,27 +6,33 @@ import java.util.Random;
 
 public class LeafSudoku extends JFrame {
     private SudokuBoard board;
+    private SudokuSolver solver;
     private JButton[][] cellButtons;
     private JButton[] numberButtons;
     private JButton clearCellButton;
     private JButton newGameButton;
+    private JButton solveButton;
+    private JButton loadPuzzleButton;
     private JLabel titleLabel;
     private JLabel instructionLabel;
     private JLabel selectNumberLabel;
+    private JLabel performanceLabel;
     private int selectedNumber = 0;
 
     // Color scheme matching the leaf theme
     private final Color LEAF_GREEN = new Color(76, 153, 0);
     private final Color LIGHT_GREEN = new Color(220, 240, 200);
     private final Color DARK_GREEN = new Color(0, 100, 0);
+    private final Color SOLVER_BLUE = new Color(70, 130, 180);
 
     public LeafSudoku() {
+        solver = new SudokuSolver();
         initializeGUI();
         setupGame();
     }
 
     private void initializeGUI() {
-        setTitle("Leaf Sudoku");
+        setTitle("Leaf Sudoku - AI Solver");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
@@ -60,7 +66,7 @@ public class LeafSudoku extends JFrame {
 
         add(mainPanel);
         pack();
-        setLocationRelativeTo(null); // Center the window
+        setLocationRelativeTo(null);
         setResizable(false);
     }
 
@@ -71,13 +77,13 @@ public class LeafSudoku extends JFrame {
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
 
         // Title
-        titleLabel = new JLabel("Leaf Sudoku");
+        titleLabel = new JLabel("Leaf Sudoku - AI Solver");
         titleLabel.setFont(new Font("Serif", Font.BOLD, 32));
         titleLabel.setForeground(DARK_GREEN);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Instruction
-        instructionLabel = new JLabel("Fill the grid so each row, column, and 3×3 box contains numbers 1-9");
+        instructionLabel = new JLabel("Play manually or use AI solver. Black numbers are fixed.");
         instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
         instructionLabel.setForeground(Color.DARK_GRAY);
         instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -118,7 +124,7 @@ public class LeafSudoku extends JFrame {
                             cellButton.setBackground(Color.WHITE);
                             cellButton.setForeground(Color.BLACK);
                             cellButton.setText(String.valueOf(board.getCell(row, col)));
-                            cellButton.setEnabled(false); // Make given numbers uneditable
+                            cellButton.setEnabled(false);
                         } else {
                             cellButton.setBackground(Color.WHITE);
                             cellButton.setForeground(LEAF_GREEN);
@@ -182,6 +188,36 @@ public class LeafSudoku extends JFrame {
             numberPanel.add(numberButtons[i]);
         }
 
+        // AI Solver button
+        solveButton = new JButton("AI Solve");
+        solveButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        solveButton.setBackground(SOLVER_BLUE);
+        solveButton.setForeground(Color.WHITE);
+        solveButton.setFocusPainted(false);
+        solveButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        solveButton.setMaximumSize(new Dimension(150, 40));
+        solveButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                autoSolvePuzzle();
+            }
+        });
+
+        // Load Puzzle button
+        loadPuzzleButton = new JButton("Load Puzzle");
+        loadPuzzleButton.setFont(new Font("SansSerif", Font.BOLD, 14));
+        loadPuzzleButton.setBackground(new Color(160, 82, 45)); // Sienna brown
+        loadPuzzleButton.setForeground(Color.WHITE);
+        loadPuzzleButton.setFocusPainted(false);
+        loadPuzzleButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        loadPuzzleButton.setMaximumSize(new Dimension(150, 40));
+        loadPuzzleButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                loadPuzzleFromFile();
+            }
+        });
+
         // Control buttons
         clearCellButton = new JButton("Clear Cell");
         clearCellButton.setFont(new Font("SansSerif", Font.BOLD, 14));
@@ -193,7 +229,7 @@ public class LeafSudoku extends JFrame {
         clearCellButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                selectedNumber = 0; // 0 represents clearing
+                selectedNumber = 0;
                 updateNumberButtons();
             }
         });
@@ -212,21 +248,33 @@ public class LeafSudoku extends JFrame {
             }
         });
 
+        // Performance label
+        performanceLabel = new JLabel("Performance: --");
+        performanceLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        performanceLabel.setForeground(Color.DARK_GRAY);
+        performanceLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         // Add components to control panel
         controlPanel.add(selectNumberLabel);
         controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         controlPanel.add(numberPanel);
         controlPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        controlPanel.add(solveButton);
+        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        controlPanel.add(loadPuzzleButton);
+        controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         controlPanel.add(clearCellButton);
         controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         controlPanel.add(newGameButton);
+        controlPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        controlPanel.add(performanceLabel);
 
         return controlPanel;
     }
 
     private void handleCellClick(int row, int col) {
         if (selectedNumber != 0 && !board.isGivenNumber(row, col)) {
-            if (selectedNumber == -1) { // Clear cell
+            if (selectedNumber == 0) { // Clear cell
                 board.setCell(row, col, 0);
                 cellButtons[row][col].setText("");
                 cellButtons[row][col].setForeground(LEAF_GREEN);
@@ -267,9 +315,68 @@ public class LeafSudoku extends JFrame {
         }
     }
 
+    private void autoSolvePuzzle() {
+        int response = JOptionPane.showConfirmDialog(this,
+                "This will automatically solve the puzzle using AI.\nContinue?",
+                "AI Solve Confirmation",
+                JOptionPane.YES_NO_OPTION);
+
+        if (response != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        // Convert current board state to 2D array for solver
+        int[][] currentPuzzle = new int[9][9];
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                currentPuzzle[i][j] = board.getCell(i, j);
+            }
+        }
+
+        // Use the solver
+        SudokuSolver.SolverResult result = solver.solve(currentPuzzle);
+
+        if (result.success) {
+            // Update the board with solution
+            for (int i = 0; i < 9; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (!board.isGivenNumber(i, j)) {
+                        board.setCell(i, j, result.solution[i][j]);
+                    }
+                }
+            }
+
+            // Update the GUI
+            refreshBoard();
+
+            // Show performance metrics
+            performanceLabel.setText(String.format("Steps: %d, Backtracks: %d, Time: %.3fs",
+                    result.steps, result.backtracks, result.executionTime));
+
+            JOptionPane.showMessageDialog(this,
+                    String.format("Puzzle solved!\n\nAlgorithm Performance:\n• Steps: %d\n• Backtracks: %d\n• Time: %.3f seconds",
+                            result.steps, result.backtracks, result.executionTime),
+                    "AI Solve Complete",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No solution found for this puzzle configuration!",
+                    "Solve Failed",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void loadPuzzleFromFile() {
+        JOptionPane.showMessageDialog(this,
+                "File loading feature would be implemented here.\nFor now, use 'New Game' for sample puzzles.",
+                "Load Puzzle",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void startNewGame() {
         board.generateNewPuzzle();
         selectedNumber = 0;
+        performanceLabel.setText("Performance: --");
         updateNumberButtons();
         refreshBoard();
     }
@@ -301,7 +408,6 @@ public class LeafSudoku extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Set system look and feel
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
@@ -337,7 +443,7 @@ class SudokuBoard {
             }
         }
 
-        // Generate a simple puzzle (in a real implementation, you'd have proper puzzle generation)
+        // Generate a simple puzzle
         generateSimplePuzzle();
     }
 
