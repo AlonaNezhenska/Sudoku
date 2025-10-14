@@ -154,7 +154,7 @@ public class SudokuSolver {
     private Map<String, Integer> backtrackingSearch(Map<String, Integer> assignment, SudokuCSP csp) {
         steps++;
 
-        // ▶ Goal test: is the current assignment complete?
+        // Goal test: is the current assignment complete?
         if (isComplete(assignment, csp)) {
             return new HashMap<>(assignment); // Return complete assignment
         }
@@ -165,7 +165,7 @@ public class SudokuSolver {
 
         // Try each value in the variable's domain
         for (int value : csp.domains.get(varKey)) {
-            // ▶ Successor function: assign value if it doesn't conflict with current assignment
+            // Successor function: assign value if it doesn't conflict with current assignment
             if (isConsistent(assignment, var, value)) {
                 // Assign the value
                 assignment.put(varKey, value);
@@ -176,22 +176,22 @@ public class SudokuSolver {
                     return result; // Solution found
                 }
 
-                // ▶ If no legal assignments, backtrack (remove assignment)
+                // If no legal assignments, backtrack (remove assignment)
                 assignment.remove(varKey);
                 backtracks++;
             }
         }
 
-        // ▶ If there are no legal assignments, return failure
+        // If there are no legal assignments, return failure
         return null;
     }
 
-    // ▶ Goal test: check if assignment is complete (all variables assigned)
+    // Goal test: check if assignment is complete (all variables assigned)
     private boolean isComplete(Map<String, Integer> assignment, SudokuCSP csp) {
         return assignment.size() == csp.variables.size();
     }
 
-    // Select next unassigned variable (simple ordering - can be enhanced with MRV)
+    // Select next unassigned variable
     private int[] selectUnassignedVariable(Map<String, Integer> assignment, SudokuCSP csp) {
         for (int[] var : csp.variables) {
             String key = csp.getKey(var[0], var[1]);
@@ -202,7 +202,7 @@ public class SudokuSolver {
         return null; // All variables assigned
     }
 
-    // ▶ Check if assignment is consistent (no conflicts)
+    // Check if assignment is consistent (no conflicts)
     private boolean isConsistent(Map<String, Integer> assignment, int[] var, int value) {
         int row = var[0], col = var[1];
 
@@ -254,123 +254,5 @@ public class SudokuSolver {
         }
 
         return grid;
-    }
-
-    // Utility method to print the grid
-    public static void printGrid(int[][] grid) {
-        System.out.println("┌─────────┬─────────┬─────────┐");
-        for (int i = 0; i < 9; i++) {
-            if (i % 3 == 0 && i != 0) {
-                System.out.println("├─────────┼─────────┼─────────┤");
-            }
-            System.out.print("│ ");
-            for (int j = 0; j < 9; j++) {
-                if (j % 3 == 0 && j != 0) {
-                    System.out.print("│ ");
-                }
-                System.out.print(grid[i][j] == 0 ? ". " : grid[i][j] + " ");
-            }
-            System.out.println("│");
-        }
-        System.out.println("└─────────┴─────────┴─────────┘");
-    }
-
-    // Save solution to file
-    public void saveSolutionToFile(int[][] solution, String filePath) throws IOException {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
-            for (int i = 0; i < 9; i++) {
-                for (int j = 0; j < 9; j++) {
-                    writer.print(solution[i][j]);
-                    if (j < 8) writer.print(",");
-                }
-                writer.println();
-            }
-        }
-    }
-
-    // Main method with file input support
-    public static void main(String[] args) {
-        SudokuSolver solver = new SudokuSolver
-
-                ();
-
-        if (args.length == 0) {
-            // Demo mode with example puzzles
-            runDemo(solver);
-        } else {
-            // File input mode
-            for (String filePath : args) {
-                try {
-                    System.out.println("\n" + "=".repeat(50));
-                    System.out.println("Processing: " + filePath);
-                    System.out.println("=".repeat(50));
-
-                    int[][] puzzle = solver.parsePuzzleFromFile(filePath);
-
-                    System.out.println("Original puzzle:");
-                    printGrid(puzzle);
-
-                    SolverResult result = solver.solve(puzzle);
-
-                    System.out.println("\nSolution:");
-                    if (result.success) {
-                        printGrid(result.solution);
-                        System.out.println("\nStatistics:");
-                        System.out.println("Time: " + String.format("%.4f", result.executionTime) + " seconds");
-                        System.out.println("Steps: " + result.steps);
-                        System.out.println("Backtracks: " + result.backtracks);
-
-                        // Save solution
-                        String solutionPath = filePath.replace(".txt", "_solution.txt")
-                                .replace(".csv", "_solution.csv");
-                        solver.saveSolutionToFile(result.solution, solutionPath);
-                        System.out.println("Solution saved to: " + solutionPath);
-                    } else {
-                        System.out.println("No solution found!");
-                    }
-
-                } catch (IOException e) {
-                    System.err.println("Error reading file: " + filePath);
-                    System.err.println("Error: " + e.getMessage());
-                }
-            }
-        }
-    }
-
-    private static void runDemo(SudokuSolver solver) {
-        System.out.println("No input files provided. Running demo with example puzzle...");
-
-        // Example Sudoku puzzle
-        int[][] puzzle = {
-                {5, 3, 0, 0, 7, 0, 0, 0, 0},
-                {6, 0, 0, 1, 9, 5, 0, 0, 0},
-                {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                {8, 0, 0, 0, 6, 0, 0, 0, 3},
-                {4, 0, 0, 8, 0, 3, 0, 0, 1},
-                {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                {0, 6, 0, 0, 0, 0, 2, 8, 0},
-                {0, 0, 0, 4, 1, 9, 0, 0, 5},
-                {0, 0, 0, 0, 8, 0, 0, 7, 9}
-        };
-
-        System.out.println("Original puzzle:");
-        printGrid(puzzle);
-
-        SolverResult result = solver.solve(puzzle);
-
-        System.out.println("\nSolution:");
-        if (result.success) {
-            printGrid(result.solution);
-            System.out.println("\nStatistics:");
-            System.out.println("Time: " + String.format("%.4f", result.executionTime) + " seconds");
-            System.out.println("Steps: " + result.steps);
-            System.out.println("Backtracks: " + result.backtracks);
-        } else {
-            System.out.println("No solution found!");
-        }
-
-        System.out.println("\nUsage: java SudokuSolverCSP <file1> <file2> ...");
-        System.out.println("Supported formats: .txt, .csv");
-        System.out.println("Empty cells can be: 0, ., _, -, or blank");
     }
 }
