@@ -5,7 +5,7 @@ public class SudokuSolver {
     private int backtracks;
     private long startTime;
 
-    // CSP representation
+    // CSP representationn
     static class SudokuCSP {
         int[][] grid;
         List<int[]> variables;
